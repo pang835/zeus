@@ -201,31 +201,32 @@ function App() {
   };
 
   const connectWalletWithWalletConnect = async () => {
-    // Check if Web Crypto API is available
-    if (!(window.crypto && window.crypto.subtle)) {
-      alert("Web Crypto API is not supported on this device. Please use a different browser.");
-      return; // Stop execution if API is unavailable
-    }
-  
     try {
       const wcProvider = new WalletConnectProvider({
-        infuraId: "INFURA_PROJECT_ID", // Replace with your actual Infura Project ID
+        rpc: {
+          137: "https://polygon-rpc.com/", // Polygon Mainnet RPC
+        },
+        qrcode: false, // Disable QR code for deep linking
       });
   
-      await wcProvider.enable();
+      await wcProvider.enable(); // Open the MetaMask app if available
+  
       const web3Instance = new Web3(wcProvider);
       setWeb3(web3Instance);
   
       const accounts = await web3Instance.eth.getAccounts();
       setAccount(accounts[0]);
+  
       const balanceWei = await web3Instance.eth.getBalance(accounts[0]);
       setBalance(web3Instance.utils.fromWei(balanceWei, "ether"));
+  
       setProvider(wcProvider);
     } catch (error) {
       console.error("WalletConnect error:", error);
       alert("Failed to connect with WalletConnect. Try again.");
     }
   };
+  
   
   
 
