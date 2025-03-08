@@ -222,6 +222,8 @@ const connectWalletWithWalletConnect = async () => {
 
     await provider.enable();
 
+    
+
     console.log("WalletConnect successful:", provider.accounts);
   } catch (error) {
     console.error("WalletConnect error:", error);
@@ -229,9 +231,15 @@ const connectWalletWithWalletConnect = async () => {
   }
 };
 
-  
-  
-  
+const updateUI = () => {
+  // Example: Update the wallet address display
+  const walletAddress = provider.accounts[0];
+  document.getElementById("walletAddress").innerText = walletAddress || "Not connected";
+
+  // If using React, update state
+  setWalletAddress(walletAddress || "");
+};
+
 
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
@@ -246,6 +254,28 @@ const connectWalletWithWalletConnect = async () => {
       setIsConnected(false);
       setIsModalOpen(false); // Close the modal after disconnect
     };
+    
+    if (!provider) return; // Ensure provider is available
+
+    provider.on("connect", (info) => {
+      console.log("WalletConnect connected:", info);
+      updateUI();
+    });
+
+    provider.on("accountsChanged", (accounts) => {
+      console.log("Accounts changed:", accounts);
+      updateUI();
+    });
+
+    provider.on("chainChanged", (chainId) => {
+      console.log("Chain changed:", chainId);
+      updateUI();
+    });
+
+    provider.on("disconnect", (code, reason) => {
+      console.log("WalletConnect disconnected:", code, reason);
+      handleDisconnect();
+    });
 
     const targetDate = new Date("2025-04-01T20:00:00Z"); // UTC format (ISO string)
 
@@ -270,8 +300,14 @@ const connectWalletWithWalletConnect = async () => {
     updateCountdown();
     const timer = setInterval(updateCountdown, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      clearInterval(timer);
+      provider.off("connect");
+      provider.off("accountsChanged");
+      provider.off("chainChanged");
+      provider.off("disconnect");
+  };
+  }, [provider]);
 
   return (
     <div style={styles.container}>
