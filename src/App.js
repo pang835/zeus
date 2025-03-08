@@ -339,7 +339,7 @@ function App() {
 
       <div style={styles.countdown}>
         <p>
-          Launching in: {timeLeft.days} Days {timeLeft.hours} Hours {timeLeft.minutes} Minutes {timeLeft.seconds} Seconds
+          Presale ends in: {timeLeft.days} Days {timeLeft.hours} Hours {timeLeft.minutes} Minutes {timeLeft.seconds} Seconds
         </p>
       </div>
 
