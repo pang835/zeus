@@ -184,15 +184,15 @@ function App() {
       alert("Please connect your wallet first.");
       return;
     }
-
+  
     try {
       const contract = new web3.eth.Contract(OlympusTokenABI, OLY_CONTRACT_ADDRESS);
       const valueInWei = web3.utils.toWei(polAmount.toString(), "ether");
-
+  
       // Fetch current gas price dynamically
       const gasPrice = await web3.eth.getGasPrice();
       const gasLimit = 300000; // Increase limit to avoid underestimation
-
+  
       console.log("Sending transaction...");
       const tx = await contract.methods.buyTokens().send({
         from: account,
@@ -200,7 +200,7 @@ function App() {
         gas: gasLimit,
         gasPrice: gasPrice,
       });
-
+  
       console.log("Transaction receipt:", tx);
       alert("Tokens purchased successfully!");
     } catch (error) {
@@ -208,6 +208,7 @@ function App() {
       alert(`Transaction Failed: ${error.message}`);
     }
   };
+  
 
 
   const connectWalletWithWalletConnect = async () => {
@@ -230,18 +231,19 @@ function App() {
       });
   
       // Enable WalletConnect and listen for accounts
-      await provider.enable();
+      await provider.enable(); // This triggers the connection process
   
-      // Update UI to show the wallet is connected
-      setIsConnected(true);
-      setProvider(provider); // Save provider for later use
-  
-      // Get the connected wallet's account(s)
+      // Once connected, set the provider and connected account
+      setProvider(provider);
+      setIsConnected(true); // Mark the wallet as connected
       const accounts = provider.accounts;
       setAccount(accounts[0]); // Use the first account (if available)
-      
-      // Get the balance of the connected wallet (in MATIC)
+  
+      // Initialize Web3 with WalletConnect provider
       const web3Instance = new Web3(provider);
+      setWeb3(web3Instance);
+  
+      // Get the balance of the connected wallet (in MATIC)
       const balanceWei = await web3Instance.eth.getBalance(accounts[0]);
       setBalance(web3Instance.utils.fromWei(balanceWei, "ether"));
   
@@ -252,6 +254,7 @@ function App() {
       
     }
   };
+  
   
 
   
