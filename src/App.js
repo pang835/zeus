@@ -1,7 +1,11 @@
-/* global BigInt */
 import React, { useState, useEffect } from "react";
 import Web3 from "web3";
+import WalletConnectProvider from "@walletconnect/web3-provider";
 import OlympusTokenABI from "./abis/OlympusToken.json";
+import './App.css';  // Add this line to import the CSS file
+import WalletConnectComponent from './WalletConnect.js';
+
+
 
 const OLY_CONTRACT_ADDRESS = process.env.REACT_APP_CONTRACT_ADDRESS;
 
@@ -25,6 +29,63 @@ function App() {
   const [balance, setBalance] = useState(0);
   const [polAmount, setPolAmount] = useState(0);
   const [walletModal, setWalletModal] = useState(false);
+  const [provider, setProvider] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [error, setError] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const connectToWallet = async () => {
+    try {
+      // Trigger WalletConnect connection here
+      const result = await initiateWalletConnect();
+      setIsConnected(true); // Set connection state to true
+      setQrCodeUrl(result.qrCodeUrl); // Update QR code URL state
+      setIsModalOpen(true); // Open the modal
+    } catch (err) {
+      // This handles the error if the modal is closed or any other connection issue occurs
+      if (err.message.includes("User closed modal")) {
+        setError("Wallet connection was canceled.");
+      } else {
+        setError('Failed to connect wallet: ' + err.message);
+      }
+    }
+  };
+  
+
+  const handleDisconnectWallet = () => {
+    setIsConnected(false); // Reset connection state
+    setQrCodeUrl(''); // Clear QR code URL state
+    setIsModalOpen(false); // Close modal when disconnected
+  };
+
+  // Function to handle closing the modal if user closes it manually
+  const handleModalClose = () => {
+    setIsModalOpen(false); // Close the modal when the user closes it manually
+    if (error) {
+      setError('User closed modal');
+    } else {
+      setError(''); // Reset error message if there is no error
+    }
+  };
+  
+
+  // Simulate the WalletConnect connection process
+  const initiateWalletConnect = () => {
+    return new Promise((resolve, reject) => {
+      // Simulate a successful connection and provide a QR code URL
+      setTimeout(() => {
+        // Simulate the modal being closed here
+        const userClosedModal = Math.random() > 0.5; // Example check, this could be based on actual event data
+        if (userClosedModal) {
+          reject(new Error('User closed modal'));
+        } else {
+          resolve({ qrCodeUrl: 'https://example.com/qr-code' });
+        }
+      }, 1000); // Simulating async wallet connection process
+    });
+  };
+  
 
   const initWeb3 = async (walletType) => {
     let provider = null;
@@ -39,23 +100,23 @@ function App() {
       alert("Selected wallet is not installed. Please install it and try again.");
       return;
     }
-  
+
     try {
       await provider.request({ method: "eth_requestAccounts" });
-  
+
       // Create Web3 instance with the provider
       const web3Instance = new Web3(provider);
       setWeb3(web3Instance);
-  
+
       const accounts = await web3Instance.eth.getAccounts();
       setAccount(accounts[0]);
-  
+
       const balanceWei = await web3Instance.eth.getBalance(accounts[0]);
       setBalance(web3Instance.utils.fromWei(balanceWei, "ether"));
-  
+
       // ✅ Force Phantom Wallet to use Polygon
       await switchToPolygon(provider);
-  
+
       setWalletModal(false); // Close modal after selecting wallet
     } catch (error) {
       console.error("Error connecting wallet:", error);
@@ -98,10 +159,11 @@ function App() {
       }
     }
   };
-  
-  
 
   const disconnectWallet = () => {
+    if (provider) {
+      provider.disconnect();
+    }
     setWeb3(null);
     setAccount("");
     setBalance(0);
@@ -113,15 +175,15 @@ function App() {
       alert("Please connect your wallet first.");
       return;
     }
-  
+
     try {
       const contract = new web3.eth.Contract(OlympusTokenABI, OLY_CONTRACT_ADDRESS);
       const valueInWei = web3.utils.toWei(polAmount.toString(), "ether");
-  
+
       // Fetch current gas price dynamically
       const gasPrice = await web3.eth.getGasPrice();
       const gasLimit = 300000; // Increase limit to avoid underestimation
-  
+
       console.log("Sending transaction...");
       const tx = await contract.methods.buyTokens().send({
         from: account,
@@ -129,7 +191,7 @@ function App() {
         gas: gasLimit,
         gasPrice: gasPrice,
       });
-  
+
       console.log("Transaction receipt:", tx);
       alert("Tokens purchased successfully!");
     } catch (error) {
@@ -138,48 +200,74 @@ function App() {
     }
   };
 
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-
-useEffect(() => {
-  // Correct target date: April 1st, 2024 at 20:00 UTC
-  const targetDate = new Date("2025-04-01T20:00:00Z"); // UTC format (ISO string)
-
-  console.log("Target Date: ", targetDate); // Debug: Check the target date
-
-  const updateCountdown = () => {
-    const now = new Date(); // Get the current local date-time
-    const nowUTC = new Date(now.toISOString()); // Convert current time to UTC
-
-    console.log("Current UTC Time: ", nowUTC); // Debug: Check current UTC time
-
-    const difference = targetDate.getTime() - nowUTC.getTime(); // Get the difference in milliseconds
-
-    console.log("Difference in ms: ", difference); // Debug: Check the difference
-
-    if (difference <= 0) {
-      // If the target date has passed, set time left to 0
-      setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-    } else {
-      // Calculate days, hours, minutes, and seconds
-      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((difference / (1000 * 60)) % 60);
-      const seconds = Math.floor((difference / 1000) % 60);
-
-      console.log("Countdown: ", days, hours, minutes, seconds); // Debug: Check the countdown calculation
-
-      // Update the timeLeft state with calculated values
-      setTimeLeft({ days, hours, minutes, seconds });
+  const connectWalletWithWalletConnect = async () => {
+    // Check if Web Crypto API is available
+    if (!(window.crypto && window.crypto.subtle)) {
+      alert("Web Crypto API is not supported on this device. Please use a different browser.");
+      return; // Stop execution if API is unavailable
+    }
+  
+    try {
+      const wcProvider = new WalletConnectProvider({
+        infuraId: "INFURA_PROJECT_ID", // Replace with your actual Infura Project ID
+      });
+  
+      await wcProvider.enable();
+      const web3Instance = new Web3(wcProvider);
+      setWeb3(web3Instance);
+  
+      const accounts = await web3Instance.eth.getAccounts();
+      setAccount(accounts[0]);
+      const balanceWei = await web3Instance.eth.getBalance(accounts[0]);
+      setBalance(web3Instance.utils.fromWei(balanceWei, "ether"));
+      setProvider(wcProvider);
+    } catch (error) {
+      console.error("WalletConnect error:", error);
+      alert("Failed to connect with WalletConnect. Try again.");
     }
   };
+  
+  
 
-  updateCountdown(); // Initialize countdown immediately
-  const timer = setInterval(updateCountdown, 1000); // Update every second
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
-  // Cleanup interval on unmount to stop timer
-  return () => clearInterval(timer);
-}, []);
+  useEffect(() => {
 
+    const handleConnect = () => {
+      setIsConnected(true);
+      setIsModalOpen(false); // Close the modal after successful connection
+    };
+
+    const handleDisconnect = () => {
+      setIsConnected(false);
+      setIsModalOpen(false); // Close the modal after disconnect
+    };
+
+    const targetDate = new Date("2025-04-01T20:00:00Z"); // UTC format (ISO string)
+
+    const updateCountdown = () => {
+      const now = new Date();
+      const nowUTC = new Date(now.toISOString());
+
+      const difference = targetDate.getTime() - nowUTC.getTime();
+
+      if (difference <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      } else {
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((difference / (1000 * 60)) % 60);
+        const seconds = Math.floor((difference / 1000) % 60);
+
+        setTimeLeft({ days, hours, minutes, seconds });
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div style={styles.container}>
@@ -190,6 +278,7 @@ useEffect(() => {
           <button onClick={() => setWalletModal(true)} style={styles.button}>
             Connect Wallet
           </button>
+          
         ) : (
           <div>
             <button onClick={buyTokens} style={styles.button}>
@@ -214,16 +303,12 @@ useEffect(() => {
           />
         </div>
       )}
-{/* Countdown Timer */}
-<div style={styles.countdown}>
+
+      <div style={styles.countdown}>
         <p>
           Launching in: {timeLeft.days} Days {timeLeft.hours} Hours {timeLeft.minutes} Minutes {timeLeft.seconds} Seconds
         </p>
       </div>
-
-
-
-
 
       <div style={styles.paragraph}>
         <p>
@@ -243,23 +328,33 @@ useEffect(() => {
         </p>
       </div>
 
+      
+
       {walletModal && (
-        <div style={styles.modal}>
-          <h2>Select a Wallet</h2>
-          <button onClick={() => initWeb3("metamask")} style={styles.walletButton}>
-            🦊 MetaMask
-          </button>
-          <button onClick={() => initWeb3("trust")} style={styles.walletButton}>
-            🏦 Trust Wallet
-          </button>
-          <button onClick={() => initWeb3("phantom")} style={styles.walletButton}>
-            👻 Phantom Wallet
-          </button>
-          <button onClick={() => setWalletModal(false)} style={styles.disconnectButton}>
-            Cancel
-          </button>
-        </div>
-      )}
+  <div style={styles.modal}>
+    <h2>Select a Wallet</h2>
+    <button onClick={() => initWeb3("metamask")} style={styles.walletButton}>
+      🦊 MetaMask
+    </button>
+    <button onClick={() => initWeb3("trust")} style={styles.walletButton}>
+      🏦 Trust Wallet
+    </button>
+    <button onClick={() => initWeb3("phantom")} style={styles.walletButton}>
+      👻 Phantom Wallet
+    </button>
+    <button onClick={() => connectWalletWithWalletConnect()} style={styles.walletButton}>
+      🔗 WalletConnect
+    </button>
+    <button onClick={() => {
+      setIsModalOpen(false); // Close the modal
+      setWalletModal(false); // Reset the wallet modal state
+    }} style={styles.disconnectButton}>
+      Cancel
+    </button>
+  </div>
+)}
+
+
     </div>
   );
 }

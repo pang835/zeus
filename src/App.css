@@ -36,3 +36,24 @@
     transform: rotate(360deg);
   }
 }
+
+/* src/App.css */
+
+/* This will target the QR code container */
+.walletconnect-modal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 90vw;
+  max-height: 90vh;
+  margin: 0 auto;
+}
+
+/* This will target the actual QR code image */
+.walletconnect-modal img {
+  width: 100%;
+  height: auto;
+  max-width: 400px;
+  max-height: 400px;
+  object-fit: contain;
+}
