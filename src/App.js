@@ -85,6 +85,15 @@ function App() {
       }, 1000); // Simulating async wallet connection process
     });
   };
+
+  const checkWalletConnection = async () => {
+    if (provider.connected) {
+      console.log("Wallet already connected");
+      updateUI();
+    }
+  };
+  
+  
   
 
   const initWeb3 = async (walletType) => {
@@ -201,36 +210,49 @@ function App() {
   };
 
 
-const connectWalletWithWalletConnect = async () => {
-  try {
-    const provider = await EthereumProvider.init({
-      projectId: "a35994697db43855f146d5d8edaefaae", // Replace with actual WalletConnect Cloud Project ID
-      chains: [137], // Polygon Mainnet
-      showQrModal: true, // Enables QR code for desktop users
-      methods: ["eth_sendTransaction", "eth_signTransaction", "eth_sign", "personal_sign", "eth_signTypedData"],
-      rpcMap: {
-        137: "https://polygon-rpc.com", // Replace with correct RPC for your network
-      },
-      relayUrl: "wss://relay.walletconnect.com", // Explicitly set relay URL
-      metadata: {
-        name: "Olympus Token",
-        description: "Connect to Olympus Token dApp",
-        url: "https://yourwebsite.com",
-        icons: ["https://yourwebsite.com/favicon.ico"],
-      },
-    });
-
-    await provider.enable();
-    window.location.reload();
-
-    
-
-    console.log("WalletConnect successful:", provider.accounts);
-  } catch (error) {
-    console.error("WalletConnect error:", error);
-    alert("Failed to connect with WalletConnect. Try again.");
-  }
-};
+  const connectWalletWithWalletConnect = async () => {
+    try {
+      const provider = await EthereumProvider.init({
+        projectId: "a35994697db43855f146d5d8edaefaae", // Replace with actual WalletConnect Cloud Project ID
+        chains: [137], // Polygon Mainnet
+        showQrModal: true, // Enables QR code for desktop users
+        methods: ["eth_sendTransaction", "eth_signTransaction", "eth_sign", "personal_sign", "eth_signTypedData"],
+        rpcMap: {
+          137: "https://polygon-rpc.com", // Replace with correct RPC for your network
+        },
+        relayUrl: "wss://relay.walletconnect.com", // Explicitly set relay URL
+        metadata: {
+          name: "Olympus Token",
+          description: "Connect to Olympus Token dApp",
+          url: "https://yourwebsite.com",
+          icons: ["https://yourwebsite.com/favicon.ico"],
+        },
+      });
+  
+      // Enable WalletConnect and listen for accounts
+      await provider.enable();
+  
+      // Update UI to show the wallet is connected
+      setIsConnected(true);
+      setProvider(provider); // Save provider for later use
+  
+      // Get the connected wallet's account(s)
+      const accounts = provider.accounts;
+      setAccount(accounts[0]); // Use the first account (if available)
+      
+      // Get the balance of the connected wallet (in MATIC)
+      const web3Instance = new Web3(provider);
+      const balanceWei = await web3Instance.eth.getBalance(accounts[0]);
+      setBalance(web3Instance.utils.fromWei(balanceWei, "ether"));
+  
+      console.log("WalletConnect successful:", accounts);
+  
+    } catch (error) {
+      console.error("WalletConnect error:", error);
+      
+    }
+  };
+  
 
   
   
@@ -360,11 +382,11 @@ const connectWalletWithWalletConnect = async () => {
       Cancel
     </button>
   </div>
-)}
+  )}
 
 
     </div>
   );
-}
+ }
 
 export default App;
