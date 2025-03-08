@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Web3 from "web3";
-import WalletConnectProvider from "@walletconnect/web3-provider";
+import { EthereumProvider } from "@walletconnect/ethereum-provider";
 import OlympusTokenABI from "./abis/OlympusToken.json";
 import './App.css';  // Add this line to import the CSS file
 import WalletConnectComponent from './WalletConnect.js';
@@ -200,32 +200,35 @@ function App() {
     }
   };
 
-  const connectWalletWithWalletConnect = async () => {
-    try {
-      const wcProvider = new WalletConnectProvider({
-        rpc: {
-          137: "https://polygon-rpc.com/", // Polygon Mainnet RPC
-        },
-        qrcode: false, // Disable QR code for deep linking
-      });
-  
-      await wcProvider.enable(); // Open the MetaMask app if available
-  
-      const web3Instance = new Web3(wcProvider);
-      setWeb3(web3Instance);
-  
-      const accounts = await web3Instance.eth.getAccounts();
-      setAccount(accounts[0]);
-  
-      const balanceWei = await web3Instance.eth.getBalance(accounts[0]);
-      setBalance(web3Instance.utils.fromWei(balanceWei, "ether"));
-  
-      setProvider(wcProvider);
-    } catch (error) {
-      console.error("WalletConnect error:", error);
-      alert("Failed to connect with WalletConnect. Try again.");
-    }
-  };
+
+const connectWalletWithWalletConnect = async () => {
+  try {
+    const provider = await EthereumProvider.init({
+      projectId: "a35994697db43855f146d5d8edaefaae", // Replace with actual WalletConnect Cloud Project ID
+      chains: [137], // Polygon Mainnet
+      showQrModal: true, // Enables QR code for desktop users
+      methods: ["eth_sendTransaction", "eth_signTransaction", "eth_sign", "personal_sign", "eth_signTypedData"],
+      rpcMap: {
+        137: "https://polygon-rpc.com", // Replace with correct RPC for your network
+      },
+      relayUrl: "wss://relay.walletconnect.com", // Explicitly set relay URL
+      metadata: {
+        name: "Olympus Token",
+        description: "Connect to Olympus Token dApp",
+        url: "https://yourwebsite.com",
+        icons: ["https://yourwebsite.com/favicon.ico"],
+      },
+    });
+
+    await provider.enable();
+
+    console.log("WalletConnect successful:", provider.accounts);
+  } catch (error) {
+    console.error("WalletConnect error:", error);
+    alert("Failed to connect with WalletConnect. Try again.");
+  }
+};
+
   
   
   
