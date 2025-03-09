@@ -339,6 +339,9 @@ function App() {
 
       <div style={styles.countdown}>
         <p>
+          Contract Adress: 0x1a024b893AC5f4DAa861708224aA9C852fE99914
+          <br />
+          <br />
           Presale ends in: {timeLeft.days} Days {timeLeft.hours} Hours {timeLeft.minutes} Minutes {timeLeft.seconds} Seconds
         </p>
       </div>
